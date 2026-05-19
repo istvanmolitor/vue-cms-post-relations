@@ -1,0 +1,243 @@
+<script setup lang="ts">
+import { AdminLayout, EditButton, DeleteButton, toastService, InputError } from '@admin'
+import Card from '@admin/components/ui/Card.vue'
+import CardContent from '@admin/components/ui/CardContent.vue'
+import CardHeader from '@admin/components/ui/CardHeader.vue'
+import CardTitle from '@admin/components/ui/CardTitle.vue'
+import Label from '@admin/components/ui/Label.vue'
+import Input from '@admin/components/ui/Input.vue'
+import SaveButton from '@admin/components/ui/button/SaveButton.vue'
+import DataTable, { type Column, type PaginationMeta } from '@admin/components/ui/dataTable/DataTable.vue'
+import { reactive, ref, onMounted } from 'vue'
+import {
+  cmsPostRelationService,
+  type CmsPostRelation,
+  type CmsPostRelationFormData,
+  type PostOption,
+} from '../services/cmsPostRelationService'
+
+const relations = ref<CmsPostRelation[]>([])
+const posts = ref<PostOption[]>([])
+const isLoading = ref(false)
+const isSaving = ref(false)
+const editingRelationId = ref<number | null>(null)
+const errors = ref<Record<string, string[]>>({})
+
+const pagination = ref<PaginationMeta>({
+  current_page: 1,
+  last_page: 1,
+  per_page: 10,
+  total: 0,
+})
+
+const getCurrentPage = (): number => {
+  const currentPage = pagination.value.current_page
+
+  if (Array.isArray(currentPage)) {
+    return currentPage[0] ?? 1
+  }
+
+  return currentPage
+}
+
+const form = reactive<CmsPostRelationFormData>({
+  post_id: null,
+  related_post_id: null,
+  sort: 0,
+})
+
+const columns: Column<CmsPostRelation>[] = [
+  { key: 'id', label: 'ID', sortable: true, width: '80px' },
+  { key: 'post_title', label: 'Alap poszt', sortable: false },
+  { key: 'related_post_title', label: 'Kapcsolt poszt', sortable: false },
+  { key: 'sort', label: 'Sorrend', sortable: true, width: '110px' },
+]
+
+const fetchRelations = async (params: {
+  search?: string
+  sort?: string
+  direction?: 'asc' | 'desc'
+  page?: number
+}) => {
+  try {
+    isLoading.value = true
+    const response = await cmsPostRelationService.getAll(params)
+    relations.value = response.data.data
+    pagination.value = response.data.meta
+  } catch (error) {
+    console.error('Hiba a kapcsolatok betoltese kozben:', error)
+    toastService.error('Nem sikerult betolteni a kapcsolatokat.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const fetchOptions = async () => {
+  try {
+    const response = await cmsPostRelationService.getOptions()
+    posts.value = response.data.posts
+  } catch (error) {
+    console.error('Hiba az opciok betoltese kozben:', error)
+    toastService.error('Nem sikerult betolteni a valaszthato elemeket.')
+  }
+}
+
+const resetForm = () => {
+  form.post_id = null
+  form.related_post_id = null
+  form.sort = 0
+  editingRelationId.value = null
+  errors.value = {}
+}
+
+const submit = async () => {
+  if (form.post_id === null || form.related_post_id === null) {
+    toastService.error('Valassz ket posztot.')
+    return
+  }
+
+  try {
+    isSaving.value = true
+    errors.value = {}
+
+    if (editingRelationId.value === null) {
+      await cmsPostRelationService.create(form)
+      toastService.success('Kapcsolat letrehozva.')
+    } else {
+      await cmsPostRelationService.update(editingRelationId.value, form)
+      toastService.success('Kapcsolat frissitve.')
+    }
+
+    await fetchRelations({ page: getCurrentPage() })
+    resetForm()
+  } catch (error: any) {
+    console.error('Hiba mentes kozben:', error)
+
+    if (error.response?.status === 422) {
+      errors.value = error.response.data.errors ?? {}
+      toastService.error('Ellenorizd az adatokat.')
+      return
+    }
+
+    toastService.error('A mentes sikertelen.')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const startEdit = (relation: CmsPostRelation) => {
+  editingRelationId.value = relation.id ?? null
+  form.post_id = relation.post_id
+  form.related_post_id = relation.related_post_id
+  form.sort = relation.sort
+}
+
+const removeRelation = async (relation: CmsPostRelation) => {
+  if (!relation.id) {
+    return
+  }
+
+  try {
+    await cmsPostRelationService.delete(relation.id)
+    toastService.success('Kapcsolat torolve.')
+    await fetchRelations({ page: getCurrentPage() })
+
+    if (editingRelationId.value === relation.id) {
+      resetForm()
+    }
+  } catch (error) {
+    console.error('Hiba torles kozben:', error)
+    toastService.error('A torles sikertelen.')
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([
+    fetchOptions(),
+    fetchRelations({ page: 1, sort: 'sort', direction: 'asc' }),
+  ])
+})
+</script>
+
+<template>
+  <AdminLayout pageTitle="CMS poszt-poszt kapcsolatok">
+    <Card class="mb-4">
+      <CardHeader>
+        <CardTitle>{{ editingRelationId ? 'Kapcsolat szerkesztese' : 'Uj kapcsolat' }}</CardTitle>
+      </CardHeader>
+      <CardContent class="grid gap-4 md:grid-cols-4">
+        <div class="space-y-2 md:col-span-2">
+          <Label for="post_id">Alap poszt</Label>
+          <select
+            id="post_id"
+            v-model.number="form.post_id"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option :value="null">Valassz posztot...</option>
+            <option v-for="post in posts" :key="post.id" :value="post.id">
+              {{ post.title }}
+            </option>
+          </select>
+          <InputError :message="errors.post_id" />
+        </div>
+
+        <div class="space-y-2 md:col-span-2">
+          <Label for="related_post_id">Kapcsolt poszt</Label>
+          <select
+            id="related_post_id"
+            v-model.number="form.related_post_id"
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option :value="null">Valassz kapcsolt posztot...</option>
+            <option v-for="post in posts" :key="post.id" :value="post.id">
+              {{ post.title }}
+            </option>
+          </select>
+          <InputError :message="errors.related_post_id" />
+        </div>
+
+        <div class="space-y-2 md:col-span-1">
+          <Label for="sort">Sorrend</Label>
+          <Input id="sort" v-model.number="form.sort" type="number" min="0" />
+          <InputError :message="errors.sort" />
+        </div>
+
+        <div class="flex items-end gap-2 md:col-span-3">
+          <SaveButton :is-saving="isSaving" @click="submit">
+            {{ editingRelationId ? 'Frissites' : 'Hozzarendeles' }}
+          </SaveButton>
+          <button
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-md border border-input px-4 text-sm"
+            @click="resetForm"
+          >
+            Megse
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <DataTable
+      :columns="columns"
+      :data="relations"
+      :loading="isLoading"
+      :pagination="pagination"
+      search-placeholder="Kereses poszt cim alapjan..."
+      default-sort="sort"
+      default-direction="asc"
+      @fetch="fetchRelations"
+    >
+      <template #row-actions="{ row }">
+        <EditButton @click="startEdit(row)" />
+        <DeleteButton @confirm="removeRelation(row)" />
+      </template>
+
+      <template #empty>
+        Nincs megjelenitheto kapcsolat.
+      </template>
+    </DataTable>
+  </AdminLayout>
+</template>
+
+
+
