@@ -77,6 +77,17 @@ watch(
 )
 
 const fetchRelations = async (params: FetchRelationsParams = {}) => {
+  if (form.post_id === null) {
+    relations.value = []
+    pagination.value = {
+      current_page: 1,
+      last_page: 1,
+      per_page: 10,
+      total: 0,
+    }
+    return
+  }
+
   try {
     isLoading.value = true
     lastFetchParams.value = { ...params }
@@ -220,6 +231,7 @@ onMounted(async () => {
     </Card>
 
     <DataTable
+      v-if="form.post_id !== null"
       :columns="columns"
       :data="relations"
       :loading="isLoading"
@@ -255,6 +267,13 @@ onMounted(async () => {
         Nincs megjelenitheto kapcsolat.
       </template>
     </DataTable>
+
+    <div
+      v-else
+      class="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground"
+    >
+      Valassz egy alap posztot a kapcsolatok megjelenitesehez.
+    </div>
   </AdminLayout>
 </template>
 
