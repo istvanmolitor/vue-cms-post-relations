@@ -8,16 +8,15 @@ import Label from '@admin/components/ui/Label.vue'
 import Input from '@admin/components/ui/Input.vue'
 import SaveButton from '@admin/components/ui/button/SaveButton.vue'
 import DataTable, { type Column, type PaginationMeta } from '@admin/components/ui/dataTable/DataTable.vue'
+import { PostSelector } from '@cms'
 import { reactive, ref, onMounted } from 'vue'
 import {
   cmsPostRelationService,
   type CmsPostRelation,
   type CmsPostRelationFormData,
-  type PostOption,
 } from '../services/cmsPostRelationService'
 
 const relations = ref<CmsPostRelation[]>([])
-const posts = ref<PostOption[]>([])
 const isLoading = ref(false)
 const isSaving = ref(false)
 const editingRelationId = ref<number | null>(null)
@@ -72,15 +71,6 @@ const fetchRelations = async (params: {
   }
 }
 
-const fetchOptions = async () => {
-  try {
-    const response = await cmsPostRelationService.getOptions()
-    posts.value = response.data.posts
-  } catch (error) {
-    console.error('Hiba az opciok betoltese kozben:', error)
-    toastService.error('Nem sikerult betolteni a valaszthato elemeket.')
-  }
-}
 
 const resetForm = () => {
   form.post_id = null
@@ -152,10 +142,7 @@ const removeRelation = async (relation: CmsPostRelation) => {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    fetchOptions(),
-    fetchRelations({ page: 1, sort: 'sort', direction: 'asc' }),
-  ])
+  await fetchRelations({ page: 1, sort: 'sort', direction: 'asc' })
 })
 </script>
 
@@ -168,31 +155,23 @@ onMounted(async () => {
       <CardContent class="grid gap-4 md:grid-cols-4">
         <div class="space-y-2 md:col-span-2">
           <Label for="post_id">Alap poszt</Label>
-          <select
+          <PostSelector
             id="post_id"
-            v-model.number="form.post_id"
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option :value="null">Valassz posztot...</option>
-            <option v-for="post in posts" :key="post.id" :value="post.id">
-              {{ post.title }}
-            </option>
-          </select>
+            v-model="form.post_id"
+            placeholder="Válassz posztot..."
+            search-placeholder="Keresés cím alapján..."
+          />
           <InputError :message="errors.post_id" />
         </div>
 
         <div class="space-y-2 md:col-span-2">
           <Label for="related_post_id">Kapcsolt poszt</Label>
-          <select
+          <PostSelector
             id="related_post_id"
-            v-model.number="form.related_post_id"
-            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option :value="null">Valassz kapcsolt posztot...</option>
-            <option v-for="post in posts" :key="post.id" :value="post.id">
-              {{ post.title }}
-            </option>
-          </select>
+            v-model="form.related_post_id"
+            placeholder="Válassz kapcsolt posztot..."
+            search-placeholder="Keresés cím alapján..."
+          />
           <InputError :message="errors.related_post_id" />
         </div>
 
