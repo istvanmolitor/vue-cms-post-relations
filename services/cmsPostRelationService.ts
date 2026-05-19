@@ -13,6 +13,7 @@ export interface CmsPostRelation {
   post_title?: string
   related_post_id: number
   related_post_title?: string
+  related_post_main_image_url?: string | null
   sort: number
   created_at?: string
   updated_at?: string
@@ -48,7 +49,7 @@ export interface CmsPostRelationOptionsResponse {
 }
 
 export const cmsPostRelationService = {
-  getAll(params?: { search?: string; sort?: string; direction?: string; page?: number }) {
+  getAll(params?: { search?: string; sort?: string; direction?: string; page?: number; post_id?: number }) {
     return api.get<PaginatedResponse<CmsPostRelation>>('/api/admin/cms-post-relations', { params })
   },
   getOptions() {

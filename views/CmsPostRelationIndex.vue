@@ -9,7 +9,7 @@ import Input from '@admin/components/ui/Input.vue'
 import SaveButton from '@admin/components/ui/button/SaveButton.vue'
 import DataTable, { type Column, type PaginationMeta } from '@admin/components/ui/dataTable/DataTable.vue'
 import { PostSelector } from '@cms'
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import {
   cmsPostRelationService,
   type CmsPostRelation,
@@ -47,20 +47,40 @@ const form = reactive<CmsPostRelationFormData>({
 
 const columns: Column<CmsPostRelation>[] = [
   { key: 'id', label: 'ID', sortable: true, width: '80px' },
-  { key: 'post_title', label: 'Alap poszt', sortable: false },
   { key: 'related_post_title', label: 'Kapcsolt poszt', sortable: false },
   { key: 'sort', label: 'Sorrend', sortable: true, width: '110px' },
 ]
 
-const fetchRelations = async (params: {
+type FetchRelationsParams = {
   search?: string
   sort?: string
   direction?: 'asc' | 'desc'
   page?: number
-}) => {
+}
+
+const lastFetchParams = ref<FetchRelationsParams>({
+  page: 1,
+  sort: 'sort',
+  direction: 'asc',
+})
+
+const buildFetchParams = (params: FetchRelationsParams = {}) => ({
+  ...params,
+  ...(form.post_id !== null ? { post_id: form.post_id } : {}),
+})
+
+watch(
+  () => form.post_id,
+  async () => {
+    await fetchRelations({ ...lastFetchParams.value, page: 1 })
+  },
+)
+
+const fetchRelations = async (params: FetchRelationsParams = {}) => {
   try {
     isLoading.value = true
-    const response = await cmsPostRelationService.getAll(params)
+    lastFetchParams.value = { ...params }
+    const response = await cmsPostRelationService.getAll(buildFetchParams(params))
     relations.value = response.data.data
     pagination.value = response.data.meta
   } catch (error) {
@@ -72,8 +92,11 @@ const fetchRelations = async (params: {
 }
 
 
-const resetForm = () => {
-  form.post_id = null
+const resetForm = (preservePostId = false) => {
+  if (!preservePostId) {
+    form.post_id = null
+  }
+
   form.related_post_id = null
   form.sort = 0
   editingRelationId.value = null
@@ -98,8 +121,8 @@ const submit = async () => {
       toastService.success('Kapcsolat frissitve.')
     }
 
-    await fetchRelations({ page: getCurrentPage() })
-    resetForm()
+    await fetchRelations({ ...lastFetchParams.value, page: getCurrentPage() })
+    resetForm(true)
   } catch (error: any) {
     console.error('Hiba mentes kozben:', error)
 
@@ -130,10 +153,10 @@ const removeRelation = async (relation: CmsPostRelation) => {
   try {
     await cmsPostRelationService.delete(relation.id)
     toastService.success('Kapcsolat torolve.')
-    await fetchRelations({ page: getCurrentPage() })
+    await fetchRelations({ ...lastFetchParams.value, page: getCurrentPage() })
 
     if (editingRelationId.value === relation.id) {
-      resetForm()
+      resetForm(true)
     }
   } catch (error) {
     console.error('Hiba torles kozben:', error)
@@ -206,6 +229,23 @@ onMounted(async () => {
       default-direction="asc"
       @fetch="fetchRelations"
     >
+      <template #related_post_title="{ row }">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
+            <img
+              v-if="row.related_post_main_image_url"
+              :src="row.related_post_main_image_url"
+              :alt="row.related_post_title ?? 'Kapcsolt poszt'"
+              class="h-full w-full object-cover"
+            />
+            <div v-else class="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+              -
+            </div>
+          </div>
+          <span class="truncate">{{ row.related_post_title }}</span>
+        </div>
+      </template>
+
       <template #row-actions="{ row }">
         <EditButton @click="startEdit(row)" />
         <DeleteButton @confirm="removeRelation(row)" />
