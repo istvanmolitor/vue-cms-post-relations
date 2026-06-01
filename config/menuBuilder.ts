@@ -9,7 +9,8 @@ export class CmsRelationsMenuBuilder extends MenuBuilder {
         title: 'Cikk kapcsolatok',
         path: '/admin/cms-relations',
         icon: Link2,
-        order: 41
+        order: 41,
+        permission: 'cms'
       })
     }
 
