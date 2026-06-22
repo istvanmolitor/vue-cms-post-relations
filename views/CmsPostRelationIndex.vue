@@ -46,7 +46,6 @@ const form = reactive<CmsPostRelationFormData>({
 })
 
 const columns: Column<CmsPostRelation>[] = [
-  { key: 'id', label: 'ID', sortable: true, width: '80px' },
   { key: 'related_post_title', label: 'Kapcsolt poszt', sortable: false },
   { key: 'sort', label: 'Sorrend', sortable: true, width: '110px' },
 ]
