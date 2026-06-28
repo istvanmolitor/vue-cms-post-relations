@@ -45,10 +45,7 @@ const form = reactive<CmsPostRelationFormData>({
   sort: 0,
 })
 
-const columns: Column<CmsPostRelation>[] = [
-  { key: 'related_post_title', label: 'Kapcsolt poszt', sortable: false },
-  { key: 'sort', label: 'Sorrend', sortable: true, width: '110px' },
-]
+const columns = ref<Column[]>([])
 
 type FetchRelationsParams = {
   search?: string
@@ -93,6 +90,7 @@ const fetchRelations = async (params: FetchRelationsParams = {}) => {
     const response = await cmsPostRelationService.getAll(buildFetchParams(params))
     relations.value = response.data.data
     pagination.value = response.data.meta
+    columns.value = (response.data.columns ?? []) as Column[]
   } catch (error) {
     console.error('Hiba a kapcsolatok betoltese kozben:', error)
     toastService.error('Nem sikerult betolteni a kapcsolatokat.')
