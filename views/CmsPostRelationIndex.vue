@@ -7,98 +7,25 @@ import CardTitle from '@admin/components/ui/CardTitle.vue'
 import Label from '@admin/components/ui/Label.vue'
 import Input from '@admin/components/ui/Input.vue'
 import SaveButton from '@admin/components/ui/button/SaveButton.vue'
-import DataTable, { type Column, type PaginationMeta } from '@admin/components/ui/dataTable/DataTable.vue'
+import DataTable from '@admin/components/ui/dataTable/DataTable.vue'
 import { PostSelector } from '@cms'
-import { reactive, ref, onMounted, watch } from 'vue'
+import { reactive, ref } from 'vue'
 import {
   cmsPostRelationService,
   type CmsPostRelation,
   type CmsPostRelationFormData,
 } from '../services/cmsPostRelationService'
 
-const relations = ref<CmsPostRelation[]>([])
-const isLoading = ref(false)
+const table = ref()
 const isSaving = ref(false)
 const editingRelationId = ref<number | null>(null)
 const errors = ref<Record<string, string[]>>({})
-
-const pagination = ref<PaginationMeta>({
-  current_page: 1,
-  last_page: 1,
-  per_page: 10,
-  total: 0,
-})
-
-const getCurrentPage = (): number => {
-  const currentPage = pagination.value.current_page
-
-  if (Array.isArray(currentPage)) {
-    return currentPage[0] ?? 1
-  }
-
-  return currentPage
-}
 
 const form = reactive<CmsPostRelationFormData>({
   post_id: null,
   related_post_id: null,
   sort: 0,
 })
-
-const columns = ref<Column[]>([])
-
-type FetchRelationsParams = {
-  search?: string
-  sort?: string
-  direction?: 'asc' | 'desc'
-  page?: number
-}
-
-const lastFetchParams = ref<FetchRelationsParams>({
-  page: 1,
-  sort: 'sort',
-  direction: 'asc',
-})
-
-const buildFetchParams = (params: FetchRelationsParams = {}) => ({
-  ...params,
-  ...(form.post_id !== null ? { post_id: form.post_id } : {}),
-})
-
-watch(
-  () => form.post_id,
-  async () => {
-    await fetchRelations({ ...lastFetchParams.value, page: 1 })
-  },
-)
-
-const fetchRelations = async (params: FetchRelationsParams = {}) => {
-  if (form.post_id === null) {
-    relations.value = []
-    pagination.value = {
-      current_page: 1,
-      last_page: 1,
-      per_page: 10,
-      total: 0,
-    }
-    return
-  }
-
-  try {
-    isLoading.value = true
-    lastFetchParams.value = { ...params }
-    const response = await cmsPostRelationService.getAll(buildFetchParams(params))
-    relations.value = response.data.data
-    pagination.value = response.data.meta
-    columns.value = (response.data.columns ?? []) as Column[]
-  } catch (error) {
-    console.error('Hiba a kapcsolatok betoltese kozben:', error)
-    toastService.error('Nem sikerult betolteni a kapcsolatokat.')
-  } finally {
-    isLoading.value = false
-  }
-}
-
 
 const resetForm = (preservePostId = false) => {
   if (!preservePostId) {
@@ -129,7 +56,7 @@ const submit = async () => {
       toastService.success('Kapcsolat frissitve.')
     }
 
-    await fetchRelations({ ...lastFetchParams.value, page: getCurrentPage() })
+    table.value?.refresh()
     resetForm(true)
   } catch (error: any) {
     console.error('Hiba mentes kozben:', error)
@@ -161,7 +88,7 @@ const removeRelation = async (relation: CmsPostRelation) => {
   try {
     await cmsPostRelationService.delete(relation.id)
     toastService.success('Kapcsolat torolve.')
-    await fetchRelations({ ...lastFetchParams.value, page: getCurrentPage() })
+    table.value?.refresh()
 
     if (editingRelationId.value === relation.id) {
       resetForm(true)
@@ -171,10 +98,6 @@ const removeRelation = async (relation: CmsPostRelation) => {
     toastService.error('A torles sikertelen.')
   }
 }
-
-onMounted(async () => {
-  await fetchRelations({ page: 1, sort: 'sort', direction: 'asc' })
-})
 </script>
 
 <template>
@@ -190,7 +113,6 @@ onMounted(async () => {
             id="post_id"
             v-model="form.post_id"
             placeholder="Válassz posztot..."
-            search-placeholder="Keresés cím alapján..."
           />
           <InputError :message="errors.post_id" />
         </div>
@@ -201,7 +123,6 @@ onMounted(async () => {
             id="related_post_id"
             v-model="form.related_post_id"
             placeholder="Válassz kapcsolt posztot..."
-            search-placeholder="Keresés cím alapján..."
           />
           <InputError :message="errors.related_post_id" />
         </div>
@@ -229,35 +150,30 @@ onMounted(async () => {
 
     <DataTable
       v-if="form.post_id !== null"
-      :columns="columns"
-      :data="relations"
-      :loading="isLoading"
-      :pagination="pagination"
-      search-placeholder="Kereses poszt cim alapjan..."
-      default-sort="sort"
-      default-direction="asc"
-      @fetch="fetchRelations"
+      ref="table"
+      url="/api/admin/cms-post-relations"
+      :extra-params="{ post_id: form.post_id }"
     >
       <template #related_post_title="{ row }">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
             <img
-              v-if="row.related_post_main_image_url"
-              :src="row.related_post_main_image_url"
-              :alt="row.related_post_title ?? 'Kapcsolt poszt'"
+              v-if="(row as any).related_post_main_image_url"
+              :src="(row as any).related_post_main_image_url"
+              :alt="(row as any).related_post_title ?? 'Kapcsolt poszt'"
               class="h-full w-full object-cover"
             />
             <div v-else class="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
               -
             </div>
           </div>
-          <span class="truncate">{{ row.related_post_title }}</span>
+          <span class="truncate">{{ (row as any).related_post_title }}</span>
         </div>
       </template>
 
       <template #row-actions="{ row }">
-        <EditButton @click="startEdit(row)" />
-        <DeleteButton @confirm="removeRelation(row)" />
+        <EditButton @click="startEdit(row as CmsPostRelation)" />
+        <DeleteButton @confirm="removeRelation(row as CmsPostRelation)" />
       </template>
 
       <template #empty>
@@ -273,6 +189,3 @@ onMounted(async () => {
     </div>
   </AdminLayout>
 </template>
-
-
-
