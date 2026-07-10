@@ -7,6 +7,11 @@ export interface PostOption {
   title: string
 }
 
+export interface RelationTypeOption {
+  id: number
+  name: string
+}
+
 export interface CmsPostRelation {
   id?: number
   post_id: number
@@ -14,6 +19,8 @@ export interface CmsPostRelation {
   related_post_id: number
   related_post_title?: string
   related_post_main_image_url?: string | null
+  post_relation_id?: number | null
+  post_relation_type_name?: string | null
   sort: number
   created_at?: string
   updated_at?: string
@@ -22,6 +29,7 @@ export interface CmsPostRelation {
 export interface CmsPostRelationFormData {
   post_id: number | null
   related_post_id: number | null
+  post_relation_id: number | null
   sort: number
 }
 
@@ -47,23 +55,24 @@ export interface SingleResponse<T> {
 
 export interface CmsPostRelationOptionsResponse {
   posts: PostOption[]
+  relation_types: RelationTypeOption[]
 }
 
 export const cmsPostRelationService = {
   getAll(params?: { search?: string; sort?: string; direction?: string; page?: number; post_id?: number }) {
-    return api.get<PaginatedResponse<CmsPostRelation>>('/api/admin/cms-post-relations', { params })
+    return api.get<PaginatedResponse<CmsPostRelation>>('/api/admin/post-relations', { params })
   },
   getOptions() {
-    return api.get<CmsPostRelationOptionsResponse>('/api/admin/cms-post-relations/options')
+    return api.get<CmsPostRelationOptionsResponse>('/api/admin/post-relations/options')
   },
   create(payload: CmsPostRelationFormData) {
-    return api.post<SingleResponse<CmsPostRelation>>('/api/admin/cms-post-relations', payload)
+    return api.post<SingleResponse<CmsPostRelation>>('/api/admin/post-relations', payload)
   },
   update(id: number, payload: CmsPostRelationFormData) {
-    return api.put<SingleResponse<CmsPostRelation>>(`/api/admin/cms-post-relations/${id}`, payload)
+    return api.put<SingleResponse<CmsPostRelation>>(`/api/admin/post-relations/${id}`, payload)
   },
   delete(id: number) {
-    return api.delete(`/api/admin/cms-post-relations/${id}`)
+    return api.delete(`/api/admin/post-relations/${id}`)
   },
 }
 

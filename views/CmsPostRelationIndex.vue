@@ -6,25 +6,42 @@ import CardHeader from '@admin/components/ui/CardHeader.vue'
 import CardTitle from '@admin/components/ui/CardTitle.vue'
 import Label from '@admin/components/ui/Label.vue'
 import Input from '@admin/components/ui/Input.vue'
+import Select from '@admin/components/ui/Select.vue'
 import SaveButton from '@admin/components/ui/button/SaveButton.vue'
 import DataTable from '@admin/components/ui/dataTable/DataTable.vue'
 import { PostSelector } from '@cms'
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import {
   cmsPostRelationService,
   type CmsPostRelation,
   type CmsPostRelationFormData,
+  type RelationTypeOption,
 } from '../services/cmsPostRelationService'
 
 const table = ref()
 const isSaving = ref(false)
 const editingRelationId = ref<number | null>(null)
 const errors = ref<Record<string, string[]>>({})
+const relationTypeOptions = ref<RelationTypeOption[]>([])
 
 const form = reactive<CmsPostRelationFormData>({
   post_id: null,
   related_post_id: null,
+  post_relation_id: null,
   sort: 0,
+})
+
+const fetchRelationTypeOptions = async () => {
+  try {
+    const { data } = await cmsPostRelationService.getOptions()
+    relationTypeOptions.value = data.relation_types ?? []
+  } catch (error) {
+    console.error('Hiba a kapcsolat tipusok betoltesekor:', error)
+  }
+}
+
+onMounted(() => {
+  fetchRelationTypeOptions()
 })
 
 const resetForm = (preservePostId = false) => {
@@ -33,6 +50,7 @@ const resetForm = (preservePostId = false) => {
   }
 
   form.related_post_id = null
+  form.post_relation_id = null
   form.sort = 0
   editingRelationId.value = null
   errors.value = {}
@@ -77,6 +95,7 @@ const startEdit = (relation: CmsPostRelation) => {
   editingRelationId.value = relation.id ?? null
   form.post_id = relation.post_id
   form.related_post_id = relation.related_post_id
+  form.post_relation_id = relation.post_relation_id ?? null
   form.sort = relation.sort
 }
 
@@ -106,34 +125,50 @@ const removeRelation = async (relation: CmsPostRelation) => {
       <CardHeader>
         <CardTitle>{{ editingRelationId ? 'Kapcsolat szerkesztese' : 'Uj kapcsolat' }}</CardTitle>
       </CardHeader>
-      <CardContent class="grid gap-4 md:grid-cols-4">
-        <div class="space-y-2 md:col-span-2">
-          <Label for="post_id">Alap poszt</Label>
-          <PostSelector
-            id="post_id"
-            v-model="form.post_id"
-            placeholder="Válassz posztot..."
-          />
-          <InputError :message="errors.post_id" />
+      <CardContent class="space-y-4">
+        <div class="grid gap-4 md:grid-cols-4">
+          <div class="space-y-2 md:col-span-2">
+            <Label for="post_id">Alap poszt</Label>
+            <PostSelector
+              id="post_id"
+              v-model="form.post_id"
+              placeholder="Válassz posztot..."
+            />
+            <InputError :message="errors.post_id" />
+          </div>
+
+          <div class="space-y-2 md:col-span-2">
+            <Label for="post_relation_id">Kapcsolat típusa</Label>
+            <Select
+              id="post_relation_id"
+              v-model="form.post_relation_id"
+              :options="relationTypeOptions"
+              label-field="name"
+              value-field="id"
+              placeholder="Válassz típust..."
+              clearable
+            />
+            <InputError :message="errors.post_relation_id" />
+          </div>
+
+          <div class="space-y-2 md:col-span-2">
+            <Label for="related_post_id">Kapcsolt poszt</Label>
+            <PostSelector
+              id="related_post_id"
+              v-model="form.related_post_id"
+              placeholder="Válassz kapcsolt posztot..."
+            />
+            <InputError :message="errors.related_post_id" />
+          </div>
+
+          <div class="space-y-2 md:col-span-2">
+            <Label for="sort">Sorrend</Label>
+            <Input id="sort" v-model.number="form.sort" type="number" min="0" />
+            <InputError :message="errors.sort" />
+          </div>
         </div>
 
-        <div class="space-y-2 md:col-span-2">
-          <Label for="related_post_id">Kapcsolt poszt</Label>
-          <PostSelector
-            id="related_post_id"
-            v-model="form.related_post_id"
-            placeholder="Válassz kapcsolt posztot..."
-          />
-          <InputError :message="errors.related_post_id" />
-        </div>
-
-        <div class="space-y-2 md:col-span-1">
-          <Label for="sort">Sorrend</Label>
-          <Input id="sort" v-model.number="form.sort" type="number" min="0" />
-          <InputError :message="errors.sort" />
-        </div>
-
-        <div class="flex items-end gap-2 md:col-span-3">
+        <div class="flex items-end gap-2">
           <SaveButton :is-saving="isSaving" @click="submit">
             {{ editingRelationId ? 'Frissites' : 'Hozzarendeles' }}
           </SaveButton>
@@ -147,11 +182,10 @@ const removeRelation = async (relation: CmsPostRelation) => {
         </div>
       </CardContent>
     </Card>
-
     <DataTable
       v-if="form.post_id !== null"
       ref="table"
-      url="/api/admin/cms-post-relations"
+      url="/api/admin/post-relations"
       :extra-params="{ post_id: form.post_id }"
     >
       <template #related_post_title="{ row }">
