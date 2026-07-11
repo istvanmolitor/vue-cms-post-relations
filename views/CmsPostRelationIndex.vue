@@ -27,7 +27,7 @@ const relationTypeOptions = ref<RelationTypeOption[]>([])
 const form = reactive<CmsPostRelationFormData>({
   post_id: null,
   related_post_id: null,
-  post_relation_id: null,
+  post_relation_type_id: null,
   sort: 0,
 })
 
@@ -50,7 +50,7 @@ const resetForm = (preservePostId = false) => {
   }
 
   form.related_post_id = null
-  form.post_relation_id = null
+  form.post_relation_type_id = null
   form.sort = 0
   editingRelationId.value = null
   errors.value = {}
@@ -95,7 +95,7 @@ const startEdit = (relation: CmsPostRelation) => {
   editingRelationId.value = relation.id ?? null
   form.post_id = relation.post_id
   form.related_post_id = relation.related_post_id
-  form.post_relation_id = relation.post_relation_id ?? null
+  form.post_relation_type_id = relation.post_relation_type_id ?? null
   form.sort = relation.sort
 }
 
@@ -138,17 +138,17 @@ const removeRelation = async (relation: CmsPostRelation) => {
           </div>
 
           <div class="space-y-2 md:col-span-2">
-            <Label for="post_relation_id">Kapcsolat típusa</Label>
+            <Label for="post_relation_type_id">Kapcsolat típusa</Label>
             <Select
-              id="post_relation_id"
-              v-model="form.post_relation_id"
+              id="post_relation_type_id"
+              v-model="form.post_relation_type_id"
               :options="relationTypeOptions"
               label-field="name"
               value-field="id"
               placeholder="Válassz típust..."
               clearable
             />
-            <InputError :message="errors.post_relation_id" />
+            <InputError :message="errors.post_relation_type_id" />
           </div>
 
           <div class="space-y-2 md:col-span-2">

@@ -19,7 +19,7 @@ export interface CmsPostRelation {
   related_post_id: number
   related_post_title?: string
   related_post_main_image_url?: string | null
-  post_relation_id?: number | null
+  post_relation_type_id?: number | null
   post_relation_type_name?: string | null
   sort: number
   created_at?: string
@@ -29,7 +29,7 @@ export interface CmsPostRelation {
 export interface CmsPostRelationFormData {
   post_id: number | null
   related_post_id: number | null
-  post_relation_id: number | null
+  post_relation_type_id: number | null
   sort: number
 }
 
