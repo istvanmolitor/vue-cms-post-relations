@@ -44,13 +44,13 @@ onMounted(() => {
   fetchRelationTypeOptions()
 })
 
-const resetForm = (preservePostId = false) => {
-  if (!preservePostId) {
+const resetForm = (preserveFilters = false) => {
+  if (!preserveFilters) {
     form.post_id = null
+    form.post_relation_type_id = null
   }
 
   form.related_post_id = null
-  form.post_relation_type_id = null
   form.sort = 0
   editingRelationId.value = null
   errors.value = {}
@@ -175,7 +175,7 @@ const removeRelation = async (relation: CmsPostRelation) => {
           <button
             type="button"
             class="inline-flex h-10 items-center justify-center rounded-md border border-input px-4 text-sm"
-            @click="resetForm"
+            @click="resetForm()"
           >
             Megse
           </button>
@@ -183,10 +183,10 @@ const removeRelation = async (relation: CmsPostRelation) => {
       </CardContent>
     </Card>
     <DataTable
-      v-if="form.post_id !== null"
+      v-if="form.post_id !== null && form.post_relation_type_id !== null"
       ref="table"
       url="/api/admin/post-relations"
-      :extra-params="{ post_id: form.post_id }"
+      :extra-params="{ post_id: form.post_id, post_relation_type_id: form.post_relation_type_id }"
     >
       <template #related_post_title="{ row }">
         <div class="flex items-center gap-3">
@@ -219,7 +219,7 @@ const removeRelation = async (relation: CmsPostRelation) => {
       v-else
       class="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground"
     >
-      Valassz egy alap posztot a kapcsolatok megjelenitesehez.
+      Valassz egy alap posztot es egy kapcsolat tipust a kapcsolatok megjelenitesehez.
     </div>
   </AdminLayout>
 </template>
