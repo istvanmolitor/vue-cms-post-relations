@@ -5,8 +5,8 @@ import CardContent from '@admin/components/ui/CardContent.vue'
 import CardHeader from '@admin/components/ui/CardHeader.vue'
 import CardTitle from '@admin/components/ui/CardTitle.vue'
 import Label from '@admin/components/ui/Label.vue'
-import Input from '@admin/components/ui/Input.vue'
 import Select from '@admin/components/ui/Select.vue'
+import InputField from '@admin/components/ui/InputField.vue'
 import SaveButton from '@admin/components/ui/button/SaveButton.vue'
 import DataTable from '@admin/components/ui/dataTable/DataTable.vue'
 import { PostSelector } from '@cms'
@@ -161,10 +161,8 @@ const removeRelation = async (relation: CmsPostRelation) => {
             <InputError :message="errors.related_post_id" />
           </div>
 
-          <div class="space-y-2 md:col-span-2">
-            <Label for="sort">Sorrend</Label>
-            <Input id="sort" v-model.number="form.sort" type="number" min="0" />
-            <InputError :message="errors.sort" />
+          <div class="md:col-span-2">
+            <InputField id="sort" label="Sorrend" v-model.number="form.sort" type="number" min="0" :errors="errors.sort" />
           </div>
         </div>
 
